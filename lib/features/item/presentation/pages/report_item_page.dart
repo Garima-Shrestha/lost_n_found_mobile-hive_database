@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/theme_extensions.dart';
 import '../../../../core/services/storage/user_session_service.dart';
@@ -75,6 +79,173 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
   IconData _getIconForCategory(String categoryName) {
     return _categoryIcons[categoryName] ?? Icons.category_rounded;
   }
+
+
+  // hamro code ya bata
+  final List<XFile> _selectedMedia = [];  // [images, videos haru store garna ko lagi]
+  final ImagePicker _imagePicker = ImagePicker();
+
+  Future<bool> _userSangaPermissionMagu(Permission permission) async {
+    final status = await permission.status;
+    if(status.isGranted) {
+      return true;
+    }
+    if(status.isDenied) {
+      final result = await permission.request();
+      return result.isGranted;
+    }
+    if(status.isPermanentlyDenied) {
+      _showPermissionDeniedDialog();
+      return false;
+    }
+    return false;
+  }
+
+  void _showPermissionDeniedDialog(){
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Permission Dinus"),
+          content: Text("Yo feature haru use garna lai permission settings haru ma janu hola"),
+          actions: [
+            TextButton(onPressed: (){}, child: Text("Cancel")),
+            TextButton(onPressed: (){}, child: Text("Open Settings")),
+          ]
+        ),
+    );
+  }
+
+  // code for camera
+  Future<void> _pickFromCamera() async {
+    final hasPermission = await _userSangaPermissionMagu(Permission.camera);
+    if(!hasPermission) return;
+
+    final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+    );
+
+    if(photo != null) {
+      setState(() {
+        _selectedMedia.clear();
+        _selectedMedia.add(photo);
+      });
+    }
+  }
+
+  // code for gallery
+  Future<void> _pickFromGallery({bool allowMultiple = false}) async {
+    try {
+      if(allowMultiple) {
+        final List<XFile> images = await _imagePicker.pickMultiImage(
+          imageQuality: 80,
+        );
+
+        if(images.isNotEmpty) {
+          setState(() {
+            _selectedMedia.clear();
+            _selectedMedia.addAll(images);
+          });
+        }
+      } else {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 80,
+        );
+
+        if(image != null) {
+          setState(() {
+            _selectedMedia.clear();
+            _selectedMedia.add(image);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Gallery Error $e');
+
+      if (mounted) {
+        SnackbarUtils.showError(
+            context,
+            'Tapai ko gallery access garna payena, kripaya garyera camera kholnus aani photo khicnus'
+        );
+      }
+    }
+  }
+
+  // code for video
+  Future<void> _pickFromVideo() async {
+    try {
+      final hasPermission = await _userSangaPermissionMagu(Permission.camera);
+      if (!hasPermission) return;
+
+      final hasMicPermission = await _userSangaPermissionMagu(
+        Permission.microphone,
+      );
+      if (!hasMicPermission) return;
+
+      final XFile? video = await _imagePicker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 1),
+      );
+
+      if (video != null) {
+        setState(() {
+          _selectedMedia.clear();
+          _selectedMedia.add(video);
+        });
+      }
+    } catch (e) {
+      _showPermissionDeniedDialog();
+    }
+  }
+
+  // code for dialogBox : showDialog for menu
+  Future<void> _pickMedia() async {
+    showModalBottomSheet(
+        context: context,
+        backgroundColor: context.surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20),
+          )
+        ),
+        builder: (context) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                      leading: Icon(Icons.camera),
+                      title: Text("Open Camera"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFromCamera();
+                      }
+                  ),
+                  ListTile(
+                      leading: Icon(Icons.browse_gallery),
+                      title: Text("Open Gallery"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFromGallery();
+                      }
+                  ),
+                  ListTile(
+                      leading: Icon(Icons.video_call),
+                      title: Text("Record Video"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFromVideo();
+                      }
+                  ),
+                ],
+              ),
+            )
+        )
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +439,8 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
                           // Add Photo Button
                           GestureDetector(
                             onTap: () {
-                              // TODO: Implement image picker
+                              // _cameraBataKhicha();
+                              _pickMedia();
                             },
                             child: Container(
                               width: 100,
@@ -313,6 +485,48 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
                               ),
                             ),
                           ),
+
+                          SizedBox(width: 15),  // [yo line sir le lekhnu bhayeko thiyena, sir ko ma gap aafai aayeko thiyo]
+                          if(_selectedMedia.isNotEmpty) ... [
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    image: DecorationImage(
+                                      image: FileImage(
+                                          File(_selectedMedia[0].path)
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: (){
+                                        setState(() {
+                                          _selectedMedia.clear();
+                                        });
+                                      },
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        padding: EdgeInsets.all(4),
+                                        child: Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ))
+                              ],
+                            )
+                          ],
                         ],
                       ),
 
