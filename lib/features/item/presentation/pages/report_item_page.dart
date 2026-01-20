@@ -130,6 +130,11 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
         _selectedMedia.clear();
         _selectedMedia.add(photo);
       });
+
+      // upload image to server
+      await ref
+          .read(itemViewModelProvider.notifier)
+          .uploadPhoto(File(photo.path));
     }
   }
 
@@ -146,6 +151,11 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
             _selectedMedia.clear();
             _selectedMedia.addAll(images);
           });
+
+          // // upload image to server
+          // await ref
+          //     .read(itemViewModelProvider.notifier)
+          //     .uploadPhoto(File(images.path));
         }
       } else {
         final XFile? image = await _imagePicker.pickImage(
@@ -158,6 +168,11 @@ class _ReportItemPageState extends ConsumerState<ReportItemPage> {
             _selectedMedia.clear();
             _selectedMedia.add(image);
           });
+
+          // upload image to server
+          await ref
+              .read(itemViewModelProvider.notifier)
+              .uploadPhoto(File(image.path));
         }
       }
     } catch (e) {
