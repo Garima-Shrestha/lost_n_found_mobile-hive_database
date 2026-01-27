@@ -1,25 +1,36 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:lost_n_found/features/batch/domain/entities/batch_entity.dart';
 
+part 'batch_api_model.g.dart';
+
+@JsonSerializable()
+
 class BatchApiModel {
+  @JsonKey(name: '_id')
   final String? id;
   final String batchName;
   final String? status;
 
   BatchApiModel({this.id, required this.batchName, this.status});
 
-  // toJSON
-  Map<String, dynamic> toJson() {
-    return {"batchName": batchName};
-  }
+  factory BatchApiModel.fromJson(Map<String, dynamic> json) =>
+      _$BatchApiModelFromJson(json);
 
-  // fromJSON
-  factory BatchApiModel.fromJson(Map<String, dynamic> json) {
-    return BatchApiModel(
-        id: json['_id'] as String,
-        batchName: json['batchName'] as String,
-        status: json['status'] as String,
-    );
-  }
+    Map<String, dynamic> toJson( ) => _$BatchApiModelToJson(this);
+
+  // // toJSON
+  // Map<String, dynamic> toJson() {
+  //   return {"batchName": batchName};
+  // }
+  //
+  // // fromJSON
+  // factory BatchApiModel.fromJson(Map<String, dynamic> json) {
+  //   return BatchApiModel(
+  //       id: json['_id'] as String,
+  //       batchName: json['batchName'] as String,
+  //       status: json['status'] as String,
+  //   );
+  // }
 
   // toEntity
   BatchEntity toEntity() {
